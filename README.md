@@ -5,7 +5,7 @@ This is a community Umbrel app store containing Hermes Agent from Nous Research.
 Add it in Umbrel under **App Store → Community App Stores**, or from SSH:
 
 ```sh
-sudo ~/umbrel/scripts/repo add https://github.com/<owner>/umbrel-appstore.git
+sudo ~/umbrel/scripts/repo add https://github.com/syntaxbube/umbrel-appstore.git
 sudo ~/umbrel/scripts/repo update
 sudo ~/umbrel/scripts/app install hermes-agent
 ```
