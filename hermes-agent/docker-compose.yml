@@ -1,0 +1,47 @@
+version: "3.7"
+
+services:
+  restore:
+    image: nousresearch/hermes-agent:v2026.9.14@sha256:99641e57ec762c59e54cb44aa6746b7fc68c18b3c5ddb088af54234c613d9294
+    restart: "no"
+    entrypoint: ["/init"]
+    command: ["/bin/sh", "/usr/local/bin/hermes-restore-once.sh"]
+    volumes:
+      - ${APP_DATA_DIR}/data:/opt/data
+      - ${APP_DATA_DIR}/restore:/restore:ro
+      - ${APP_DATA_DIR}/restore-once.sh:/usr/local/bin/hermes-restore-once.sh:ro
+    environment:
+      HOME: /opt/data
+      HERMES_HOME: /opt/data
+
+  hermes:
+    image: nousresearch/hermes-agent:v2026.9.14@sha256:99641e57ec762c59e54cb44aa6746b7fc68c18b3c5ddb088af54234c613d9294
+    restart: unless-stopped
+    depends_on:
+      restore:
+        condition: service_completed_successfully
+    privileged: true
+    network_mode: host
+    pid: host
+    ipc: host
+    entrypoint: ["/init"]
+    command: ["/opt/hermes/.venv/bin/hermes", "gateway", "run"]
+    volumes:
+      - ${APP_DATA_DIR}/data:/opt/data
+      - /:/host:rw
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /dev:/dev
+      - /sys:/sys:rw
+    environment:
+      HERMES_DASHBOARD: "1"
+      HERMES_DASHBOARD_HOST: "0.0.0.0"
+      HERMES_DASHBOARD_PORT: "9119"
+      HERMES_ALLOW_ROOT_GATEWAY: "1"
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: "0.0.0.0"
+      API_SERVER_KEY: "${APP_PASSWORD}"
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: "${APP_USERNAME:-admin}"
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: "${APP_PASSWORD}"
+      HERMES_DASHBOARD_BASIC_AUTH_SECRET: "${APP_PASSWORD}"
+      TERMINAL_ENV: "local"
+      TERMINAL_CWD: "/host"

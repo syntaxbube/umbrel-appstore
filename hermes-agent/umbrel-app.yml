@@ -1,0 +1,38 @@
+manifestVersion: 1.1
+id: hermes-agent
+name: Hermes Agent
+tagline: An autonomous AI agent with a persistent gateway and dashboard
+category: ai
+version: "0.21.3"
+port: 9119
+description: >-
+  Hermes Agent is an open-source autonomous AI agent from Nous Research with a
+  persistent gateway, web dashboard, messaging integrations, browser tools, and
+  terminal automation.
+
+
+  This package intentionally runs with host-level access so Hermes can manage the
+  Umbrel machine and services. It uses host networking, privileged mode, host PID
+  and IPC namespaces, a read-write mount of the host filesystem at `/host`, and
+  the Docker socket. Treat it as root-equivalent software and only install it on
+  a machine you trust.
+
+
+  After installation, open the dashboard on port 9119 and finish Hermes setup.
+  To restore an existing Hermes backup on first setup, place exactly one Hermes
+  .zip backup in the app's restore folder before starting the app. The restore
+  runs once before the gateway starts. The dashboard password is the password
+  generated for this Umbrel app.
+developer: Nous Research
+website: https://hermes-agent.nousresearch.com/
+repo: https://github.com/NousResearch/hermes-agent
+support: https://github.com/NousResearch/hermes-agent/issues
+gallery: []
+releaseNotes: >-
+  Updated to the latest stable Hermes Agent release. The container image is
+  pinned by digest and the store updater refreshes this package on new upstream
+  releases.
+dependencies: []
+path: ""
+defaultUsername: "admin"
+deterministicPassword: true

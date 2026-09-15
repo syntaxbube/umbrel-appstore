@@ -1,0 +1,92 @@
+name: Update Hermes Agent
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Follow the latest stable release
+        run: |
+          python3 - <<'PY'
+          import json
+          import re
+          import urllib.request
+          from pathlib import Path
+
+          def get(url, headers=None):
+              request = urllib.request.Request(url, headers=headers or {})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return response.read(), response.headers
+
+          release_raw, _ = get(
+              "https://api.github.com/repos/NousResearch/hermes-agent/releases/latest",
+              {"Accept": "application/vnd.github+json", "User-Agent": "umbrel-hermes-updater"},
+          )
+          release = json.loads(release_raw)
+          tag = release["tag_name"]
+          if not re.fullmatch(r"v\d{4}\.\d{1,2}\.\d{1,2}", tag):
+              raise SystemExit(f"unexpected Hermes release tag: {tag}")
+
+          version_match = re.search(r"\bv(\d+\.\d+\.\d+)\b", release.get("name", ""))
+          version = version_match.group(1) if version_match else tag.removeprefix("v")
+
+          token_raw, _ = get(
+              "https://auth.docker.io/token?service=registry.docker.io&scope=repository:nousresearch/hermes-agent:pull"
+          )
+          token = json.loads(token_raw)["token"]
+          manifest_raw, headers = get(
+              f"https://registry-1.docker.io/v2/nousresearch/hermes-agent/manifests/{tag}",
+              {
+                  "Authorization": f"Bearer {token}",
+                  "Accept": "application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json",
+              },
+          )
+          manifest = json.loads(manifest_raw)
+          platforms = {
+              (item.get("platform", {}).get("os"), item.get("platform", {}).get("architecture"))
+              for item in manifest.get("manifests", [])
+          }
+          required = {("linux", "amd64"), ("linux", "arm64")}
+          if not required <= platforms:
+              raise SystemExit(f"{tag} is not linux/amd64 + linux/arm64: {sorted(platforms)}")
+          digest = headers.get("Docker-Content-Digest")
+          if not digest or not digest.startswith("sha256:"):
+              raise SystemExit("Docker registry did not return a manifest digest")
+
+          manifest_path = Path("hermes-agent/umbrel-app.yml")
+          manifest_text = manifest_path.read_text()
+          manifest_text = re.sub(r'(?m)^version: .*$', f'version: "{version}"', manifest_text, count=1)
+          manifest_path.write_text(manifest_text)
+
+          compose_path = Path("hermes-agent/docker-compose.yml")
+          compose_text = compose_path.read_text()
+          compose_text = re.sub(
+              r"(?m)^    image: nousresearch/hermes-agent:[^@\s]+@sha256:[0-9a-f]+$",
+              f"    image: nousresearch/hermes-agent:{tag}@{digest}",
+              compose_text,
+              count=1,
+          )
+          compose_path.write_text(compose_text)
+          print(f"Hermes {version} ({tag}) -> {digest}")
+          PY
+
+      - name: Commit update
+        run: |
+          if git diff --quiet; then
+            echo "Hermes is already current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hermes-agent/umbrel-app.yml hermes-agent/docker-compose.yml
+          git commit -m "chore: update Hermes Agent"
+          git push
