@@ -3,7 +3,7 @@ id: hermes-agent
 name: Hermes Agent
 tagline: An autonomous AI agent with a persistent gateway and dashboard
 category: ai
-version: "0.21.4"
+version: "0.21.5"
 port: 9119
 description: >-
   Hermes Agent is an open-source autonomous AI agent from Nous Research with a
